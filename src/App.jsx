@@ -252,10 +252,17 @@ function App() {
         <p>You have done {sessionsToday} session{sessionsToday !== 1 ? 's' : ''} today. {sessionsToday > 0 ? "Keep it up!" : "Ready to start?"}</p>
         <div className="set-list">
           {availableSets.map(set => (
-            <div key={set.id} className={`set-item ${selectedSetIds.includes(set.id) ? 'selected' : ''}`} onClick={() => {
+            <div key={set.id} className={`set-item-container ${selectedSetIds.includes(set.id) ? 'selected' : ''}`} onClick={() => {
               const next = selectedSetIds.includes(set.id) ? selectedSetIds.filter(sid => sid !== set.id) : [...selectedSetIds, set.id];
               setSelectedSetIds(next); setSelectedSets(next);
-            }}><h3>{set.title}</h3></div>
+            }}>
+              <div className="set-header">
+                <h3>{set.title}</h3>
+              </div>
+              <div className="set-body">
+                <p className="set-description">{set.description}</p>
+              </div>
+            </div>
           ))}
         </div>
         <button className="btn btn-correct" style={{marginTop:'2rem'}} onClick={startSession}>Start Session</button>

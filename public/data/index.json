@@ -1,7 +1,8 @@
 [
   {
     "id": "timetables",
-    "title": "Times Tables (1-12)",
+    "title": "Times Tables",
+    "description": "Master your multiplication tables from 1 to 12.",
     "url": "/data/timetables.json"
   }
 ]
