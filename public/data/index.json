@@ -1,7 +1,7 @@
 [
   {
     "id": "timetables",
-    "title": "Times Tables (1-12)",
+    "title": "Times Tables",
     "url": "/data/timetables.json"
   }
 ]

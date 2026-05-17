@@ -185,6 +185,25 @@
   box-shadow: 0 4px 6px rgba(0,0,0,0.05);
 }
 
+.ai-bubble {
+  background: #f0f4f8;
+  padding: 1.5rem;
+  border-radius: 20px;
+  margin: 1.5rem 0;
+  position: relative;
+  font-style: italic;
+  color: #2c3e50;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  border-left: 5px solid #007bff;
+}
+
+.ai-bubble p {
+  margin: 0;
+  font-size: 1.2rem;
+  line-height: 1.4;
+}
+
+
 .feedback-overlay {
   position: fixed;
   top: 50%;

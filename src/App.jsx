@@ -18,13 +18,7 @@ const NUMBER_MAP = {
   'eighty': '80', 'ninety': '90', 'hundred': '100'
 };
 
-const ENCOURAGEMENTS = [
-  "You're a math superstar!",
-  "Incredible work today!",
-  "You're getting faster every time!",
-  "Wow! You're on fire!",
-  "Excellence is your middle name!"
-];
+const DEFAULT_ENCOURAGEMENT = "Great job today! Your brain is getting stronger!";
 
 function normalizeText(text) {
   return text.toLowerCase().trim().replace(/[.,/#!$%^&*;:{}=\-_`~()]/g, "");
@@ -77,6 +71,8 @@ function App() {
   const [users, setUsers] = useState([]);
   const [currentUser, setCurrentUser] = useState(null);
   const [sessionsToday, setSessionsToday] = useState(0);
+  const [sessionsYesterday, setSessionsYesterday] = useState(0);
+  const [aiMessage, setAiMessage] = useState("");
   const [availableSets, setAvailableSets] = useState([]);
   const [selectedSetIds, setSelectedSetIds] = useState(getSelectedSets());
   const [sessionCards, setSessionCards] = useState([]);
@@ -121,40 +117,66 @@ function App() {
     }
   }, [screen, currentIndex, isFlipped, feedback]);
 
+  const fetchAiEncouragement = async (type, score = null) => {
+    try {
+      const response = await fetch('/api/encourage', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: currentUser.name,
+          type,
+          score,
+          history: { sessionsToday, sessionsYesterday }
+        })
+      });
+      const data = await response.json();
+      if (data.text) setAiMessage(data.text);
+      else setAiMessage(DEFAULT_ENCOURAGEMENT);
+    } catch (err) {
+      console.error("AI failed:", err);
+      setAiMessage(DEFAULT_ENCOURAGEMENT);
+    }
+  };
+
   const selectUser = (user) => {
     setCurrentUser(user);
-    const today = new Date().toISOString().split('T')[0];
-    const key = `fc_sessions_${user.id}_${today}`;
-    const count = parseInt(localStorage.getItem(key) || '0');
-    setSessionsToday(count);
+    const todayStr = new Date().toISOString().split('T')[0];
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = yesterday.toISOString().split('T')[0];
+
+    const todayKey = `fc_sessions_${user.id}_${todayStr}`;
+    const yesterdayKey = `fc_sessions_${user.id}_${yesterdayStr}`;
+    
+    const tCount = parseInt(localStorage.getItem(todayKey) || '0');
+    const yCount = parseInt(localStorage.getItem(yesterdayKey) || '0');
+    
+    setSessionsToday(tCount);
+    setSessionsYesterday(yCount);
     setScreen(SCREENS.SET_SELECTION);
+    
+    // Kick off AI welcome after a tiny delay so state updates
+    setTimeout(() => {
+        // We use fresh variables because state hasn't updated in this tick
+        fetchAiEncouragement('start');
+    }, 10);
   };
 
   const trackSessionComplete = () => {
-    const today = new Date().toISOString().split('T')[0];
-    const key = `fc_sessions_${currentUser.id}_${today}`;
+    const todayStr = new Date().toISOString().split('T')[0];
+    const key = `fc_sessions_${currentUser.id}_${todayStr}`;
     const newCount = sessionsToday + 1;
     localStorage.setItem(key, newCount.toString());
     setSessionsToday(newCount);
+    fetchAiEncouragement('end', sessionResults);
   };
 
   const checkVoiceAnswer = (transcript) => {
     if (isFlipped || feedback || screen !== SCREENS.SESSION) return;
-    
     const normT = normalizeText(transcript);
-    
-    // Check for "pass" command
-    if (normT === 'pass') {
-      handlePass();
-      return;
-    }
-
+    if (normT === 'pass') { handlePass(); return; }
     const card = sessionCards[currentIndex];
-    if (matchAnswer(transcript, card.back)) {
-      handleCorrect();
-    } else {
-      handleWrong(transcript);
-    }
+    if (matchAnswer(transcript, card.back)) { handleCorrect(); } else { handleWrong(transcript); }
   };
 
   const handlePass = () => {
@@ -176,23 +198,16 @@ function App() {
   };
 
   const handleWrong = (transcript) => {
-    if (!transcript.trim()) {
-      setVoiceMsg("Sorry, I didn't catch that. Try again?");
-      return;
-    }
-    
+    if (!transcript.trim()) { setVoiceMsg("Sorry, I didn't catch that. Try again?"); return; }
     const newWrongCount = wrongCount + 1;
     setWrongCount(newWrongCount);
-    
     playSound('wrong');
     setFeedback('wrong');
-    
     if (newWrongCount >= 5) {
       setVoiceMsg(`Still not quite! Remember, you can say "pass" to see the answer.`);
     } else {
       setVoiceMsg(`I heard "${transcript.trim()}", but that's not it!`);
     }
-    
     setTimeout(() => setFeedback(null), 1200);
   };
 
@@ -249,7 +264,9 @@ function App() {
     return (
       <div className="app">
         <h1>Hi {currentUser.name}!</h1>
-        <p>You have done {sessionsToday} session{sessionsToday !== 1 ? 's' : ''} today. {sessionsToday > 0 ? "Keep it up!" : "Ready to start?"}</p>
+        <div className="ai-bubble">
+            <p>{aiMessage || "Getting your greeting ready..."}</p>
+        </div>
         <div className="set-list">
           {availableSets.map(set => (
             <div key={set.id} className={`set-item ${selectedSetIds.includes(set.id) ? 'selected' : ''}`} onClick={() => {
@@ -294,12 +311,14 @@ function App() {
   return (
     <div className="app">
       <h1>Well done, {currentUser.name}!</h1>
-      <p style={{fontSize: '1.5rem', margin: '1rem 0'}}>{ENCOURAGEMENTS[Math.floor(Math.random() * ENCOURAGEMENTS.length)]}</p>
+      <div className="ai-bubble" style={{background: '#e8f5e9', border: '1px solid #4caf50'}}>
+        <p style={{fontSize: '1.4rem'}}>{aiMessage || "Calculating your awesomeness..."}</p>
+      </div>
       <div className="stat-card" style={{maxWidth: '400px', margin: '2rem auto'}}>
         <p>That was session number <strong>{sessionsToday}</strong> for today.</p>
         <p>Your brain is getting stronger!</p>
       </div>
-      <button className="btn btn-correct" onClick={() => setScreen(SCREENS.SET_SELECTION)}>Practice More</button>
+      <button className="btn btn-correct" onClick={() => { setAiMessage(""); setScreen(SCREENS.SET_SELECTION); fetchAiEncouragement('start'); }}>Practice More</button>
     </div>
   );
 }
