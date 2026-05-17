@@ -3,6 +3,11 @@
   margin: 0 auto;
   padding: 2rem;
   text-align: center;
+  /* Prevent accidental text selection while tapping */
+  user-select: none;
+  -webkit-user-select: none;
+  /* Prevent elastic scrolling/bounce on iPad */
+  touch-action: manipulation;
 }
 
 .voice-toggle {
@@ -51,10 +56,14 @@
 
 .card-container {
   perspective: 1000px;
-  width: 300px;
-  height: 200px;
+  width: 90vw;
+  max-width: 400px;
+  height: 60vw;
+  max-height: 250px;
   margin: 2rem auto;
   cursor: pointer;
+  /* Ensure tap highlighting is clean */
+  -webkit-tap-highlight-color: transparent;
 }
 
 .card {
@@ -103,13 +112,15 @@
 }
 
 .btn {
-  padding: 15px 30px;
+  padding: 20px 40px; /* Larger hit areas for fingers */
   border: none;
-  border-radius: 10px;
+  border-radius: 15px;
   cursor: pointer;
   font-weight: bold;
-  font-size: 1.1rem;
+  font-size: 1.4rem; /* Larger text for readability */
   transition: transform 0.1s, opacity 0.2s;
+  /* Fix for iOS button styling */
+  -webkit-appearance: none;
 }
 
 .btn:active {
@@ -128,11 +139,12 @@
 
 .set-item {
   border: 2px solid #eee;
-  padding: 1.5rem;
-  border-radius: 12px;
+  padding: 2rem;
+  border-radius: 15px;
   background: white;
   cursor: pointer;
   transition: border-color 0.2s, background 0.2s;
+  font-size: 1.2rem;
 }
 
 .set-item:hover {
@@ -206,4 +218,3 @@
   25% { transform: translateX(-10px); }
   75% { transform: translateX(10px); }
 }
-
