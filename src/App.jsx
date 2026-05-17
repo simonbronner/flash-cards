@@ -234,10 +234,13 @@ function App() {
     return (
       <div className="app">
         <h1>Who is learning today?</h1>
-        <div className="set-list">
+        <div className="user-grid">
           {users.map(u => (
-            <div key={u.id} className="set-item" onClick={() => selectUser(u)}>
-              <h3>{u.name}</h3>
+            <div key={u.id} className="user-avatar-container" onClick={() => selectUser(u)}>
+              <div className="user-avatar">
+                {u.name.charAt(0).toUpperCase()}
+              </div>
+              <p className="user-avatar-name">{u.name}</p>
             </div>
           ))}
         </div>
