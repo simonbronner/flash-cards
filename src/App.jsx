@@ -18,14 +18,6 @@ const NUMBER_MAP = {
   'eighty': '80', 'ninety': '90', 'hundred': '100'
 };
 
-const ENCOURAGEMENTS = [
-  "You're a math superstar!",
-  "Incredible work today!",
-  "You're getting faster every time!",
-  "Wow! You're on fire!",
-  "Excellence is your middle name!"
-];
-
 function normalizeText(text) {
   return text.toLowerCase().trim().replace(/[.,/#!$%^&*;:{}=\-_`~()]/g, "");
 }
@@ -72,11 +64,23 @@ const playSound = (type) => {
   }
 };
 
+function getFontSize(text) {
+  if (!text) return '3.5rem';
+  const len = text.length;
+  if (len <= 5) return '3.5rem';
+  if (len <= 10) return '2.8rem';
+  if (len <= 20) return '2rem';
+  if (len <= 40) return '1.5rem';
+  return '1.2rem';
+}
+
 function App() {
   const [screen, setScreen] = useState(SCREENS.USER_SELECTION);
   const [users, setUsers] = useState([]);
   const [currentUser, setCurrentUser] = useState(null);
   const [sessionsToday, setSessionsToday] = useState(0);
+  const [sessionsYesterday, setSessionsYesterday] = useState(0);
+  const [greeting, setGreeting] = useState("");
   const [availableSets, setAvailableSets] = useState([]);
   const [selectedSetIds, setSelectedSetIds] = useState(getSelectedSets());
   const [sessionCards, setSessionCards] = useState([]);
@@ -121,40 +125,62 @@ function App() {
     }
   }, [screen, currentIndex, isFlipped, feedback]);
 
+  const setLocalGreeting = (type, score = null, name = null, today = null, yesterday = null) => {
+    const userName = name || currentUser.name;
+    const sToday = today !== null ? today : sessionsToday;
+    const sYesterday = yesterday !== null ? yesterday : sessionsYesterday;
+
+    if (type === 'start') {
+      if (sToday > 0) {
+        setGreeting(`Welcome back, ${userName}! Ready for session number ${sToday + 1}?`);
+      } else if (sYesterday > 0) {
+        setGreeting(`Great to see you again, ${userName}! You did ${sYesterday} session${sYesterday > 1 ? 's' : ''} yesterday. Let's get cracking!`);
+      } else {
+        setGreeting(`Hi ${userName}! Let's start learning something new today!`);
+      }
+    } else {
+      const accuracy = Math.round((score.correct / score.total) * 100);
+      if (accuracy >= 90) {
+        setGreeting(`Incredible work, ${userName}! ${accuracy}% accuracy is amazing!`);
+      } else if (accuracy >= 70) {
+        setGreeting(`Great job, ${userName}! You're getting really good at this.`);
+      } else {
+        setGreeting(`Well done on finishing the session, ${userName}. Keep practicing!`);
+      }
+    }
+  };
+
   const selectUser = (user) => {
     setCurrentUser(user);
-    const today = new Date().toISOString().split('T')[0];
-    const key = `fc_sessions_${user.id}_${today}`;
-    const count = parseInt(localStorage.getItem(key) || '0');
-    setSessionsToday(count);
+    const todayStr = new Date().toISOString().split('T')[0];
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = yesterday.toISOString().split('T')[0];
+    const todayKey = `fc_sessions_${user.id}_${todayStr}`;
+    const yesterdayKey = `fc_sessions_${user.id}_${yesterdayStr}`;
+    const tCount = parseInt(localStorage.getItem(todayKey) || '0');
+    const yCount = parseInt(localStorage.getItem(yesterdayKey) || '0');
+    setSessionsToday(tCount);
+    setSessionsYesterday(yCount);
+    setLocalGreeting('start', null, user.name, tCount, yCount);
     setScreen(SCREENS.SET_SELECTION);
   };
 
   const trackSessionComplete = () => {
-    const today = new Date().toISOString().split('T')[0];
-    const key = `fc_sessions_${currentUser.id}_${today}`;
+    const todayStr = new Date().toISOString().split('T')[0];
+    const key = `fc_sessions_${currentUser.id}_${todayStr}`;
     const newCount = sessionsToday + 1;
     localStorage.setItem(key, newCount.toString());
     setSessionsToday(newCount);
+    setLocalGreeting('end', sessionResults);
   };
 
   const checkVoiceAnswer = (transcript) => {
     if (isFlipped || feedback || screen !== SCREENS.SESSION) return;
-    
     const normT = normalizeText(transcript);
-    
-    // Check for "pass" command
-    if (normT === 'pass') {
-      handlePass();
-      return;
-    }
-
+    if (normT === 'pass') { handlePass(); return; }
     const card = sessionCards[currentIndex];
-    if (matchAnswer(transcript, card.back)) {
-      handleCorrect();
-    } else {
-      handleWrong(transcript);
-    }
+    if (matchAnswer(transcript, card.back.value)) { handleCorrect(); } else { handleWrong(transcript); }
   };
 
   const handlePass = () => {
@@ -176,23 +202,16 @@ function App() {
   };
 
   const handleWrong = (transcript) => {
-    if (!transcript.trim()) {
-      setVoiceMsg("Sorry, I didn't catch that. Try again?");
-      return;
-    }
-    
+    if (!transcript.trim()) { setVoiceMsg("Sorry, I didn't catch that. Try again?"); return; }
     const newWrongCount = wrongCount + 1;
     setWrongCount(newWrongCount);
-    
     playSound('wrong');
     setFeedback('wrong');
-    
     if (newWrongCount >= 5) {
       setVoiceMsg(`Still not quite! Remember, you can say "pass" to see the answer.`);
     } else {
       setVoiceMsg(`I heard "${transcript.trim()}", but that's not it!`);
     }
-    
     setTimeout(() => setFeedback(null), 1200);
   };
 
@@ -217,7 +236,11 @@ function App() {
     for (const id of selectedSetIds) {
       const res = await fetch(availableSets.find(s => s.id === id).url);
       const data = await res.json();
-      allCards.push(...data.cards);
+      const setCards = data.cards.map((c, index) => ({
+        ...c,
+        id: `${data.id}-${index}`
+      }));
+      allCards.push(...setCards);
     }
     const cards = getSessionCards(allCards, 20);
     setSessionCards(cards);
@@ -237,9 +260,7 @@ function App() {
         <div className="user-grid">
           {users.map(u => (
             <div key={u.id} className="user-avatar-container" onClick={() => selectUser(u)}>
-              <div className="user-avatar">
-                {u.name.charAt(0).toUpperCase()}
-              </div>
+              <div className="user-avatar">{u.name.charAt(0).toUpperCase()}</div>
               <p className="user-avatar-name">{u.name}</p>
             </div>
           ))}
@@ -252,19 +273,16 @@ function App() {
     return (
       <div className="app">
         <h1>Hi {currentUser.name}!</h1>
-        <p>You have done {sessionsToday} session{sessionsToday !== 1 ? 's' : ''} today. {sessionsToday > 0 ? "Keep it up!" : "Ready to start?"}</p>
+        {greeting && <div className="ai-bubble"><p>{greeting}</p></div>}
+        <p style={{ marginBottom: '1rem', color: '#666' }}>Select one or more sets to practice (max 20 cards total)</p>
         <div className="set-list">
           {availableSets.map(set => (
             <div key={set.id} className={`set-item-container ${selectedSetIds.includes(set.id) ? 'selected' : ''}`} onClick={() => {
               const next = selectedSetIds.includes(set.id) ? selectedSetIds.filter(sid => sid !== set.id) : [...selectedSetIds, set.id];
               setSelectedSetIds(next); setSelectedSets(next);
             }}>
-              <div className="set-header">
-                <h3>{set.title}</h3>
-              </div>
-              <div className="set-body">
-                <p className="set-description">{set.description}</p>
-              </div>
+              <div className="set-header"><h3>{set.title}</h3></div>
+              <div className="set-body"><p className="set-description">{set.description}</p></div>
             </div>
           ))}
         </div>
@@ -284,8 +302,24 @@ function App() {
         </div>
         <div className="card-container" onClick={() => !isFlipped && setIsFlipped(true)}>
           <div className={`card ${isFlipped ? 'flipped' : ''} ${feedback === 'wrong' ? 'wrong-shake' : ''}`}>
-            <div className="card-front">{card.front}</div>
-            <div className="card-back">{card.back}</div>
+            <div className="card-front">
+              <div className="card-value" style={{ fontSize: getFontSize(card.front.value) }}>{card.front.value}</div>
+              {card.front.description && (
+                <>
+                  <div className="card-divider"></div>
+                  <div className="card-description" style={{ fontSize: `clamp(0.9rem, calc(${getFontSize(card.front.value)} * 0.5), 1.2rem)` }}>{card.front.description}</div>
+                </>
+              )}
+            </div>
+            <div className="card-back">
+              <div className="card-value" style={{ fontSize: getFontSize(card.back.value) }}>{card.back.value}</div>
+              {card.back.description && (
+                <>
+                  <div className="card-divider"></div>
+                  <div className="card-description" style={{ fontSize: `clamp(0.9rem, calc(${getFontSize(card.back.value)} * 0.5), 1.2rem)` }}>{card.back.description}</div>
+                </>
+              )}
+            </div>
           </div>
         </div>
         <div className="voice-status-msg">{voiceMsg}</div>
@@ -304,12 +338,16 @@ function App() {
   return (
     <div className="app">
       <h1>Well done, {currentUser.name}!</h1>
-      <p style={{fontSize: '1.5rem', margin: '1rem 0'}}>{ENCOURAGEMENTS[Math.floor(Math.random() * ENCOURAGEMENTS.length)]}</p>
+      {greeting && (
+        <div className="ai-bubble" style={{background: '#e8f5e9', border: '1px solid #4caf50'}}>
+          <p style={{fontSize: '1.4rem'}}>{greeting}</p>
+        </div>
+      )}
       <div className="stat-card" style={{maxWidth: '400px', margin: '2rem auto'}}>
         <p>That was session number <strong>{sessionsToday}</strong> for today.</p>
         <p>Your brain is getting stronger!</p>
       </div>
-      <button className="btn btn-correct" onClick={() => setScreen(SCREENS.SET_SELECTION)}>Practice More</button>
+      <button className="btn btn-correct" onClick={() => { setGreeting(""); setScreen(SCREENS.SET_SELECTION); setLocalGreeting('start'); }}>Practice More</button>
     </div>
   );
 }
