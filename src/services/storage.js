@@ -63,11 +63,6 @@ export const getSessionCards = (allCards, limit = 20) => {
   const stats = getCardStats();
   const now = Date.now();
 
-  // Score cards: 
-  // 1. Due cards (nextReview <= now)
-  // 2. New cards (no stat yet)
-  // 3. Not yet due cards (lower priority)
-  
   const scoredCards = allCards.map(card => {
     const stat = stats[card.id];
     let priority = 0;
@@ -83,13 +78,9 @@ export const getSessionCards = (allCards, limit = 20) => {
     return { ...card, priority };
   });
 
-  // Filter out cards that are not due if we have enough due/new cards
-  // But for a session, we just want the "best" 20.
-  
   const selected = scoredCards
     .sort((a, b) => b.priority - a.priority || Math.random() - 0.5)
     .slice(0, limit);
 
-  // Shuffle the final selection
   return selected.sort(() => Math.random() - 0.5);
 };

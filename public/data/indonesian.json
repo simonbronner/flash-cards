@@ -1,0 +1,157 @@
+{
+  "id": "indonesian",
+  "title": "Indonesian Language",
+  "description": "Practice basic Indonesian phrases and conversation.",
+  "cards": [
+    {
+      "front": {
+        "value": "Siapa nama anda?",
+        "description": "What is your name?"
+      },
+      "back": {
+        "value": "Saya bernama Charlie",
+        "description": "I am named Charlie"
+      }
+    },
+    {
+      "front": {
+        "value": "Apa kabar?",
+        "description": "How are you?"
+      },
+      "back": {
+        "value": "Baik terima kasih",
+        "description": "good thank you"
+      }
+    },
+    {
+      "front": {
+        "value": "Berapa umurmu?",
+        "description": "How old are you?"
+      },
+      "back": {
+        "value": "Saya berumur lima belas tahun",
+        "description": "I am the age of 15 (years)"
+      }
+    },
+    {
+      "front": {
+        "value": "Di mana kamu tinggal?",
+        "description": "Where do you live?"
+      },
+      "back": {
+        "value": "Saya tinggal di Melbourne",
+        "description": "I live at Melbourne"
+      }
+    },
+    {
+      "front": {
+        "value": "Naik apa anda ke sekolah?",
+        "description": "How do you get to school?"
+      },
+      "back": {
+        "value": "Saya naik mobil",
+        "description": "I travel by car"
+      }
+    },
+    {
+      "front": {
+        "value": "Di mana sekolah Anda?",
+        "description": "Where is your school?"
+      },
+      "back": {
+        "value": "Sekolah saya terletak di Donvale",
+        "description": "My school is located in Donvale"
+      }
+    },
+    {
+      "front": {
+        "value": "Berapa orang dalam keluarga anda?",
+        "description": "How many people are in your family?"
+      },
+      "back": {
+        "value": "Ada lima orang dalam keluarga saya,",
+        "description": "There are five people in my family"
+      }
+    },
+    {
+      "front": {
+        "value": "Anda tinggal bersama siapa?",
+        "description": "Who do you live with?"
+      },
+      "back": {
+        "value": "Saya tinggal Bersama, ibu, bapak, “2” adik, “female,male”",
+        "description": "I live with, mother, father, “2” younger siblings, “female,male”"
+      }
+    },
+    {
+      "front": {
+        "value": "Siapa nama ibu dan bapak Anda?",
+        "description": "What is the names of your mother and father?"
+      },
+      "back": {
+        "value": "Nama ibu saya ... dan nama bapak ...",
+        "description": "My mothers name is ... and my fathers name is ..."
+      }
+    },
+    {
+      "front": {
+        "value": "Siapa nama kakak/adik?",
+        "description": "What are the names of your siblings"
+      },
+      "back": {
+        "value": "Adik perempuan saya ... Adik laki-laki saya ...",
+        "description": "My younger female siblings name is ... My younger male siblings name is ..."
+      }
+    },
+    {
+      "front": {
+        "value": "Berapa umur kakak/adik?",
+        "description": "How old is your younger sibling(s)"
+      },
+      "back": {
+        "value": "Adik laki-laki saya berumur Sembilan tahun. Adik perempuan saya berumur dua belas tahun",
+        "description": "My younger male sibling is nine years old. My younger female sibling is twelve years old."
+      }
+    },
+    {
+      "front": {
+        "value": "Anda pergi ke mana pada hari Sabtu dan hari Minggu?",
+        "description": "You go where on Saturday and Sunday?"
+      },
+      "back": {
+        "value": "Not provided",
+        "description": "Not provided"
+      }
+    },
+    {
+      "front": {
+        "value": "Apa nama teman Anda?",
+        "description": "What is your friends name?"
+      },
+      "back": {
+        "value": "Teman saya Bernama...",
+        "description": "my friends name is..."
+      }
+    },
+    {
+      "front": {
+        "value": "Anda belajar apa saja?",
+        "description": "What do you study?"
+      },
+      "back": {
+        "value": "Saya belajar bahasa Inggris. Saya suka behasa Inggris",
+        "description": "I study english, i like english"
+      }
+    },
+    {
+      "front": {
+        "value": "Ada binatang peliharaan di rumah?",
+        "description": "Are there any pets at home?"
+      },
+      "back": {
+        "value": "Saya punya satu anjing",
+        "description": "I have one dog"
+      }
+    }
+  ]
+}

@@ -4,5 +4,11 @@
     "title": "Times Tables",
     "description": "Master your multiplication tables from 1 to 12.",
     "url": "/data/timetables.json"
+  },
+  {
+    "id": "indonesian",
+    "title": "Indonesian Language",
+    "description": "Practice basic Indonesian phrases and conversation.",
+    "url": "/data/indonesian.json"
   }
 ]
