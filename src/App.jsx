@@ -352,8 +352,22 @@ function App() {
           ))}
         </div>
         <div className="controls" style={{ marginTop: '2rem' }}>
-          <button className="btn btn-correct" onClick={() => startSession(false)}>Start Session</button>
-          <button className="btn btn-correct" style={{ background: '#2196f3' }} onClick={() => startSession(true)}>🔊 Audio Session</button>
+          <button className="btn btn-correct" onClick={() => {
+            // Prime speech synthesis for iOS/WebKit
+            if (window.speechSynthesis) {
+              const utterance = new SpeechSynthesisUtterance("");
+              window.speechSynthesis.speak(utterance);
+            }
+            startSession(false);
+          }}>Start Session</button>
+          <button className="btn btn-correct" style={{ background: '#2196f3' }} onClick={() => {
+            // Prime speech synthesis for iOS/WebKit
+            if (window.speechSynthesis) {
+              const utterance = new SpeechSynthesisUtterance("");
+              window.speechSynthesis.speak(utterance);
+            }
+            startSession(true);
+          }}>🔊 Audio Session</button>
         </div>
       </div>
     );
