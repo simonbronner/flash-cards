@@ -63,7 +63,10 @@ export const getSessionCards = (allCards, limit = 20) => {
   const stats = getCardStats();
   const now = Date.now();
 
-  const scoredCards = allCards.map(card => {
+  // 1. First, fully shuffle the pool so sets are mixed regardless of order
+  const shuffledPool = [...allCards].sort(() => Math.random() - 0.5);
+
+  const scoredCards = shuffledPool.map(card => {
     const stat = stats[card.id];
     let priority = 0;
     
@@ -78,9 +81,12 @@ export const getSessionCards = (allCards, limit = 20) => {
     return { ...card, priority };
   });
 
+  // 2. Sort by priority, then take the limit.
+  // Since we already shuffled the pool, cards with same priority are already mixed.
   const selected = scoredCards
-    .sort((a, b) => b.priority - a.priority || Math.random() - 0.5)
+    .sort((a, b) => b.priority - a.priority)
     .slice(0, limit);
 
+  // 3. Final shuffle for presentation
   return selected.sort(() => Math.random() - 0.5);
 };

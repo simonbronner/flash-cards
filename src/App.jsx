@@ -274,6 +274,7 @@ function App() {
       <div className="app">
         <h1>Hi {currentUser.name}!</h1>
         {greeting && <div className="ai-bubble"><p>{greeting}</p></div>}
+        <p style={{ marginBottom: '1rem', color: '#666' }}>Select one or more sets to practice (max 20 cards total)</p>
         <div className="set-list">
           {availableSets.map(set => (
             <div key={set.id} className={`set-item-container ${selectedSetIds.includes(set.id) ? 'selected' : ''}`} onClick={() => {
