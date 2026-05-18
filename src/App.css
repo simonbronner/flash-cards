@@ -93,7 +93,7 @@
   align-items: center;
   justify-content: center;
   border-radius: 15px;
-  padding: 1rem;
+  padding: 1.5rem;
   box-sizing: border-box;
 }
 
@@ -110,24 +110,27 @@
 
 .card-value {
   font-weight: bold;
+  line-height: 1.1;
+  margin-bottom: 0.2rem;
 }
 
 .card-description {
   font-style: italic;
   color: #666;
-  margin-top: 0.5rem;
+  margin-top: 0.2rem;
 }
 
 .card-divider {
-  width: 40px;
-  height: 2px;
-  background: rgba(0,0,0,0.05);
-  margin: 0.5rem 0;
+  width: 60%;
+  max-width: 150px;
+  height: 1px;
+  background: rgba(0,0,0,0.1);
+  margin: 1rem 0;
   border-radius: 1px;
 }
 
 .card-back .card-divider {
-  background: rgba(0,123,255,0.1);
+  background: rgba(0,123,255,0.15);
 }
 
 /* Ensure back text matches back background */
