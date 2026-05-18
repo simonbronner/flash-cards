@@ -88,10 +88,13 @@ function App() {
   const [isFlipped, setIsFlipped] = useState(false);
   const [sessionResults, setSessionResults] = useState({ correct: 0, total: 0 });
   const [isListening, setIsListening] = useState(false);
+  const [audioEnabled, setAudioEnabled] = useState(false);
+  const [isAppSpeaking, setIsAppSpeaking] = useState(false);
   const [voiceMsg, setVoiceMsg] = useState('');
   const [feedback, setFeedback] = useState(null);
   const [wrongCount, setWrongCount] = useState(0);
   const recognitionRef = useRef(null);
+  const lastSpokenIndexRef = useRef(-1);
   const checkVoiceAnswerRef = useRef();
 
   useEffect(() => {
@@ -105,25 +108,74 @@ function App() {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (SpeechRecognition) {
       const recognition = new SpeechRecognition();
-      recognition.continuous = true;
+      recognition.continuous = false; // Switch to false for faster finalization
       recognition.interimResults = false;
       recognition.lang = 'en-US';
       recognition.onresult = (event) => {
         const transcript = event.results[event.results.length - 1][0].transcript;
         checkVoiceAnswerRef.current?.(transcript);
       };
-      recognition.onend = () => setIsListening(false);
+      recognition.onend = () => {
+        setIsListening(false);
+        // Manual restart if we are still in the session and not speaking/flipped
+        if (recognitionRef.current && !checkVoiceAnswerRef.current?.isPaused) {
+           try { recognition.start(); setIsListening(true); } catch (e) {}
+        }
+      };
       recognitionRef.current = recognition;
     }
   }, []);
 
   useEffect(() => {
-    if (screen === SCREENS.SESSION && !isFlipped && !feedback) {
+    // Helper to check if recognition should be active
+    const shouldListen = screen === SCREENS.SESSION && !isFlipped && !feedback && !isAppSpeaking;
+    
+    // Attach a flag to the ref so onend knows if it should restart
+    if (checkVoiceAnswerRef.current) {
+      checkVoiceAnswerRef.current.isPaused = !shouldListen;
+    }
+
+    if (shouldListen) {
+      if (audioEnabled && lastSpokenIndexRef.current !== currentIndex) {
+        speak(sessionCards[currentIndex].front.value);
+        lastSpokenIndexRef.current = currentIndex;
+      }
       try { recognitionRef.current?.start(); setIsListening(true); } catch (e) {}
     } else {
-      recognitionRef.current?.stop(); setIsListening(false);
+      try { recognitionRef.current?.stop(); } catch (e) {}
+      setIsListening(false);
     }
-  }, [screen, currentIndex, isFlipped, feedback]);
+  }, [screen, currentIndex, isFlipped, feedback, audioEnabled, isAppSpeaking]);
+
+  const speak = (text) => {
+    if (!window.speechSynthesis) return;
+    window.speechSynthesis.cancel();
+    
+    // Improve math pronunciation: replace 'x' with 'times' if it looks like an equation
+    let spokenText = text;
+    if (/\d+\s*x\s*\d+/.test(text)) {
+      spokenText = text.replace(/x/g, 'times');
+    }
+    
+    const utterance = new SpeechSynthesisUtterance(spokenText);
+    
+    // Determine language based on the current card or set
+    const card = sessionCards[currentIndex];
+    if (card && card.id && card.id.includes('indonesian')) {
+      utterance.lang = 'id-ID';
+    } else {
+      utterance.lang = 'en-US';
+    }
+
+    utterance.onstart = () => setIsAppSpeaking(true);
+    utterance.onend = () => setIsAppSpeaking(false);
+    utterance.onerror = () => setIsAppSpeaking(false);
+    
+    // Add a tiny delay to ensure the card has visually flipped and state has settled
+    setTimeout(() => {
+      window.speechSynthesis.speak(utterance);
+    }, 100);
+  };
 
   const setLocalGreeting = (type, score = null, name = null, today = null, yesterday = null) => {
     const userName = name || currentUser.name;
@@ -187,8 +239,12 @@ function App() {
     playSound('wrong');
     setFeedback('wrong');
     setIsFlipped(true);
+    const card = sessionCards[currentIndex];
+    if (audioEnabled) {
+      speak(`The answer is ${card.back.value}`);
+    }
     setVoiceMsg("Let's look at the answer and try the next one.");
-    setTimeout(() => nextCard(1), 2000);
+    setTimeout(() => nextCard(1), 3000);
   };
 
   const handleCorrect = () => {
@@ -207,12 +263,19 @@ function App() {
     setWrongCount(newWrongCount);
     playSound('wrong');
     setFeedback('wrong');
-    if (newWrongCount >= 5) {
-      setVoiceMsg(`Still not quite! Remember, you can say "pass" to see the answer.`);
+    
+    if (newWrongCount >= 2) { // Reduced to 2 chances for faster feedback
+      setIsFlipped(true);
+      const card = sessionCards[currentIndex];
+      if (audioEnabled) {
+        speak(`The answer is ${card.back.value}`);
+      }
+      setVoiceMsg(`The answer is ${card.back.value}. Let's move on.`);
+      setTimeout(() => nextCard(1), 5000);
     } else {
       setVoiceMsg(`I heard "${transcript.trim()}", but that's not it!`);
+      setTimeout(() => setFeedback(null), 1200);
     }
-    setTimeout(() => setFeedback(null), 1200);
   };
 
   const nextCard = (quality) => {
@@ -230,7 +293,7 @@ function App() {
     }
   };
 
-  const startSession = async () => {
+  const startSession = async (withAudio = false) => {
     if (selectedSetIds.length === 0) return alert('Select a set!');
     const allCards = [];
     for (const id of selectedSetIds) {
@@ -245,7 +308,9 @@ function App() {
     const cards = getSessionCards(allCards, 20);
     setSessionCards(cards);
     setCurrentIndex(0);
+    lastSpokenIndexRef.current = -1;
     setIsFlipped(false);
+    setAudioEnabled(withAudio);
     setFeedback(null);
     setVoiceMsg('');
     setWrongCount(0);
@@ -286,7 +351,10 @@ function App() {
             </div>
           ))}
         </div>
-        <button className="btn btn-correct" style={{marginTop:'2rem'}} onClick={startSession}>Start Session</button>
+        <div className="controls" style={{ marginTop: '2rem' }}>
+          <button className="btn btn-correct" onClick={() => startSession(false)}>Start Session</button>
+          <button className="btn btn-correct" style={{ background: '#2196f3' }} onClick={() => startSession(true)}>🔊 Audio Session</button>
+        </div>
       </div>
     );
   }
