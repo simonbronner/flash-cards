@@ -89,6 +89,7 @@ function App() {
   const [sessionResults, setSessionResults] = useState({ correct: 0, total: 0 });
   const [isListening, setIsListening] = useState(false);
   const [audioEnabled, setAudioEnabled] = useState(false);
+  const [isAppSpeaking, setIsAppSpeaking] = useState(false);
   const [voiceMsg, setVoiceMsg] = useState('');
   const [feedback, setFeedback] = useState(null);
   const [wrongCount, setWrongCount] = useState(0);
@@ -107,29 +108,44 @@ function App() {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (SpeechRecognition) {
       const recognition = new SpeechRecognition();
-      recognition.continuous = true;
+      recognition.continuous = false; // Switch to false for faster finalization
       recognition.interimResults = false;
       recognition.lang = 'en-US';
       recognition.onresult = (event) => {
         const transcript = event.results[event.results.length - 1][0].transcript;
         checkVoiceAnswerRef.current?.(transcript);
       };
-      recognition.onend = () => setIsListening(false);
+      recognition.onend = () => {
+        setIsListening(false);
+        // Manual restart if we are still in the session and not speaking/flipped
+        if (recognitionRef.current && !checkVoiceAnswerRef.current?.isPaused) {
+           try { recognition.start(); setIsListening(true); } catch (e) {}
+        }
+      };
       recognitionRef.current = recognition;
     }
   }, []);
 
   useEffect(() => {
-    if (screen === SCREENS.SESSION && !isFlipped && !feedback) {
+    // Helper to check if recognition should be active
+    const shouldListen = screen === SCREENS.SESSION && !isFlipped && !feedback && !isAppSpeaking;
+    
+    // Attach a flag to the ref so onend knows if it should restart
+    if (checkVoiceAnswerRef.current) {
+      checkVoiceAnswerRef.current.isPaused = !shouldListen;
+    }
+
+    if (shouldListen) {
       if (audioEnabled && lastSpokenIndexRef.current !== currentIndex) {
         speak(sessionCards[currentIndex].front.value);
         lastSpokenIndexRef.current = currentIndex;
       }
       try { recognitionRef.current?.start(); setIsListening(true); } catch (e) {}
     } else {
-      recognitionRef.current?.stop(); setIsListening(false);
+      try { recognitionRef.current?.stop(); } catch (e) {}
+      setIsListening(false);
     }
-  }, [screen, currentIndex, isFlipped, feedback, audioEnabled]);
+  }, [screen, currentIndex, isFlipped, feedback, audioEnabled, isAppSpeaking]);
 
   const speak = (text) => {
     if (!window.speechSynthesis) return;
@@ -150,6 +166,10 @@ function App() {
     } else {
       utterance.lang = 'en-US';
     }
+
+    utterance.onstart = () => setIsAppSpeaking(true);
+    utterance.onend = () => setIsAppSpeaking(false);
+    utterance.onerror = () => setIsAppSpeaking(false);
     
     // Add a tiny delay to ensure the card has visually flipped and state has settled
     setTimeout(() => {
@@ -219,8 +239,12 @@ function App() {
     playSound('wrong');
     setFeedback('wrong');
     setIsFlipped(true);
+    const card = sessionCards[currentIndex];
+    if (audioEnabled) {
+      speak(`The answer is ${card.back.value}`);
+    }
     setVoiceMsg("Let's look at the answer and try the next one.");
-    setTimeout(() => nextCard(1), 2000);
+    setTimeout(() => nextCard(1), 3000);
   };
 
   const handleCorrect = () => {
@@ -239,12 +263,19 @@ function App() {
     setWrongCount(newWrongCount);
     playSound('wrong');
     setFeedback('wrong');
-    if (newWrongCount >= 5) {
-      setVoiceMsg(`Still not quite! Remember, you can say "pass" to see the answer.`);
+    
+    if (newWrongCount >= 2) { // Reduced to 2 chances for faster feedback
+      setIsFlipped(true);
+      const card = sessionCards[currentIndex];
+      if (audioEnabled) {
+        speak(`The answer is ${card.back.value}`);
+      }
+      setVoiceMsg(`The answer is ${card.back.value}. Let's move on.`);
+      setTimeout(() => nextCard(1), 5000);
     } else {
       setVoiceMsg(`I heard "${transcript.trim()}", but that's not it!`);
+      setTimeout(() => setFeedback(null), 1200);
     }
-    setTimeout(() => setFeedback(null), 1200);
   };
 
   const nextCard = (quality) => {
