@@ -88,10 +88,12 @@ function App() {
   const [isFlipped, setIsFlipped] = useState(false);
   const [sessionResults, setSessionResults] = useState({ correct: 0, total: 0 });
   const [isListening, setIsListening] = useState(false);
+  const [audioEnabled, setAudioEnabled] = useState(false);
   const [voiceMsg, setVoiceMsg] = useState('');
   const [feedback, setFeedback] = useState(null);
   const [wrongCount, setWrongCount] = useState(0);
   const recognitionRef = useRef(null);
+  const lastSpokenIndexRef = useRef(-1);
   const checkVoiceAnswerRef = useRef();
 
   useEffect(() => {
@@ -119,11 +121,41 @@ function App() {
 
   useEffect(() => {
     if (screen === SCREENS.SESSION && !isFlipped && !feedback) {
+      if (audioEnabled && lastSpokenIndexRef.current !== currentIndex) {
+        speak(sessionCards[currentIndex].front.value);
+        lastSpokenIndexRef.current = currentIndex;
+      }
       try { recognitionRef.current?.start(); setIsListening(true); } catch (e) {}
     } else {
       recognitionRef.current?.stop(); setIsListening(false);
     }
-  }, [screen, currentIndex, isFlipped, feedback]);
+  }, [screen, currentIndex, isFlipped, feedback, audioEnabled]);
+
+  const speak = (text) => {
+    if (!window.speechSynthesis) return;
+    window.speechSynthesis.cancel();
+    
+    // Improve math pronunciation: replace 'x' with 'times' if it looks like an equation
+    let spokenText = text;
+    if (/\d+\s*x\s*\d+/.test(text)) {
+      spokenText = text.replace(/x/g, 'times');
+    }
+    
+    const utterance = new SpeechSynthesisUtterance(spokenText);
+    
+    // Determine language based on the current card or set
+    const card = sessionCards[currentIndex];
+    if (card && card.id && card.id.includes('indonesian')) {
+      utterance.lang = 'id-ID';
+    } else {
+      utterance.lang = 'en-US';
+    }
+    
+    // Add a tiny delay to ensure the card has visually flipped and state has settled
+    setTimeout(() => {
+      window.speechSynthesis.speak(utterance);
+    }, 100);
+  };
 
   const setLocalGreeting = (type, score = null, name = null, today = null, yesterday = null) => {
     const userName = name || currentUser.name;
@@ -230,7 +262,7 @@ function App() {
     }
   };
 
-  const startSession = async () => {
+  const startSession = async (withAudio = false) => {
     if (selectedSetIds.length === 0) return alert('Select a set!');
     const allCards = [];
     for (const id of selectedSetIds) {
@@ -245,7 +277,9 @@ function App() {
     const cards = getSessionCards(allCards, 20);
     setSessionCards(cards);
     setCurrentIndex(0);
+    lastSpokenIndexRef.current = -1;
     setIsFlipped(false);
+    setAudioEnabled(withAudio);
     setFeedback(null);
     setVoiceMsg('');
     setWrongCount(0);
@@ -286,7 +320,10 @@ function App() {
             </div>
           ))}
         </div>
-        <button className="btn btn-correct" style={{marginTop:'2rem'}} onClick={startSession}>Start Session</button>
+        <div className="controls" style={{ marginTop: '2rem' }}>
+          <button className="btn btn-correct" onClick={() => startSession(false)}>Start Session</button>
+          <button className="btn btn-correct" style={{ background: '#2196f3' }} onClick={() => startSession(true)}>🔊 Audio Session</button>
+        </div>
       </div>
     );
   }
