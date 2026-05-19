@@ -1,6 +1,7 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "flash-cards",
+  "main": "src/backend.js",
   "compatibility_date": "2026-05-17",
   "observability": {
     "enabled": true
