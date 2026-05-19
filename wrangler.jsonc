@@ -10,5 +10,19 @@
   },
   "compatibility_flags": [
     "nodejs_compat"
+  ],
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "TELEMETRY",
+        "class_name": "FlashCardsTelemetry"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_classes": ["FlashCardsTelemetry"]
+    }
   ]
 }
