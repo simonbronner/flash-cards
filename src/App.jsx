@@ -78,6 +78,8 @@ function App() {
   const [screen, setScreen] = useState(SCREENS.USER_SELECTION);
   const [users, setUsers] = useState([]);
   const [currentUser, setCurrentUser] = useState(null);
+  const [serverUser, setServerUser] = useState(null);
+  const [activityLog, setActivityLog] = useState([]);
   const [sessionsToday, setSessionsToday] = useState(0);
   const [sessionsYesterday, setSessionsYesterday] = useState(0);
   const [greeting, setGreeting] = useState("");
@@ -104,6 +106,17 @@ function App() {
   useEffect(() => {
     fetch('/data/index.json').then(res => res.json()).then(data => setAvailableSets(data));
     fetch('/data/users.json').then(res => res.json()).then(data => setUsers(data));
+
+    // Fetch profile and history from backend
+    fetch('/api/profile').then(res => res.json()).then(data => {
+      if (data) {
+        setServerUser(data);
+        setCurrentUser({ id: data.email, name: data.firstName });
+        setScreen(SCREENS.SET_SELECTION);
+      }
+    }).catch(() => {});
+
+    fetch('/api/history').then(res => res.json()).then(data => setActivityLog(data || []));
 
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (SpeechRecognition) {
@@ -225,6 +238,38 @@ function App() {
     localStorage.setItem(key, newCount.toString());
     setSessionsToday(newCount);
     setLocalGreeting('end', sessionResults);
+
+    // Log to backend
+    fetch('/api/log', {
+      method: 'POST',
+      body: JSON.stringify({
+        action: 'session_complete',
+        details: {
+          correct: sessionResults.correct,
+          total: sessionResults.total,
+          accuracy: Math.round((sessionResults.correct / sessionResults.total) * 100)
+        }
+      })
+    }).then(() => {
+      // Refresh history
+      fetch('/api/history').then(res => res.json()).then(data => setActivityLog(data || []));
+    });
+  };
+
+  const saveProfile = (e) => {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    const firstName = formData.get('firstName');
+    const lastName = formData.get('lastName');
+    
+    fetch('/api/profile', {
+      method: 'POST',
+      body: JSON.stringify({ firstName, lastName })
+    }).then(() => {
+      setServerUser({ firstName, lastName });
+      setCurrentUser({ id: 'me', name: firstName });
+      setScreen(SCREENS.SET_SELECTION);
+    });
   };
 
   const checkVoiceAnswer = (transcript) => {
@@ -315,10 +360,28 @@ function App() {
     setVoiceMsg('');
     setWrongCount(0);
     setSessionResults({ correct: 0, total: cards.length });
-    setScreen(SCREENS.SESSION);
-  };
+    setScreen(SCREENS.SET_SELECTION);
+    };
 
-  if (screen === SCREENS.USER_SELECTION) {
+    if (!serverUser && screen !== SCREENS.USER_SELECTION) {
+    return (
+      <div className="app">
+        <h1>Welcome!</h1>
+        <p>Please tell us who you are.</p>
+        <form onSubmit={saveProfile} className="stat-card" style={{ maxWidth: '400px', margin: '2rem auto' }}>
+          <div style={{ marginBottom: '1rem' }}>
+            <input name="firstName" placeholder="First Name" required className="btn" style={{ background: 'white', color: 'black', border: '1px solid #ccc', width: '100%' }} />
+          </div>
+          <div style={{ marginBottom: '1rem' }}>
+            <input name="lastName" placeholder="Last Name" required className="btn" style={{ background: 'white', color: 'black', border: '1px solid #ccc', width: '100%' }} />
+          </div>
+          <button type="submit" className="btn btn-correct">Save & Start</button>
+        </form>
+      </div>
+    );
+    }
+
+    if (screen === SCREENS.USER_SELECTION) {
     return (
       <div className="app">
         <h1>Who is learning today?</h1>
@@ -429,6 +492,31 @@ function App() {
         <p>That was session number <strong>{sessionsToday}</strong> for today.</p>
         <p>Your brain is getting stronger!</p>
       </div>
+
+      {activityLog.length > 0 && (
+        <div className="stat-card" style={{ maxWidth: '600px', margin: '2rem auto', textAlign: 'left' }}>
+          <h3 style={{ borderBottom: '1px solid #ddd', paddingBottom: '0.5rem' }}>Community Activity</h3>
+          <div style={{ maxHeight: '300px', overflowY: 'auto', marginTop: '1rem' }}>
+            {activityLog.map((log, i) => {
+              const details = JSON.parse(log.details || '{}');
+              return (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '15px', padding: '10px 0', borderBottom: '1px solid #eee' }}>
+                  <div className="user-avatar" style={{ width: '40px', height: '40px', fontSize: '1rem', margin: 0 }}>
+                    {(log.firstName || 'U').charAt(0).toUpperCase()}
+                  </div>
+                  <div>
+                    <p style={{ margin: 0 }}><strong>{log.firstName || 'User'}</strong> finished a session</p>
+                    <p style={{ margin: 0, fontSize: '0.8rem', color: '#666' }}>
+                      {details.accuracy}% accuracy • {new Date(log.timestamp).toLocaleTimeString()}
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       <button className="btn btn-correct" onClick={() => { setGreeting(""); setScreen(SCREENS.SET_SELECTION); setLocalGreeting('start'); }}>Practice More</button>
     </div>
   );
