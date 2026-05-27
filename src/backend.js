@@ -139,6 +139,9 @@ export default {
     }
 
     // Serve static assets (handled by Vite plugin automatically in dev/deploy)
-    return env.ASSETS.fetch(request);
+    if (env.ASSETS) {
+      return env.ASSETS.fetch(request);
+    }
+    return new Response('Assets not found. Please deploy with assets enabled.', { status: 503 });
   }
 };
